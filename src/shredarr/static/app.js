@@ -346,6 +346,7 @@ const NAMES = {
   qbittorrent: "qBittorrent",
   transmission: "Transmission",
   deluge: "Deluge",
+  rtorrent: "rTorrent",
   jellyfin: "Jellyfin",
   plex: "Plex",
   prowlarr: "Prowlarr",
@@ -581,8 +582,8 @@ const sysOf = (s) =>
           ? ["radarr", "Radarr"]
           : /Seerr/.test(s)
             ? ["seerr", "Seerr"]
-            : /qBittorrent|Transmission|Deluge/.test(s)
-              ? ["qbit", s.match(/qBittorrent|Transmission|Deluge/)[0]]
+            : /qBittorrent|Transmission|Deluge|rTorrent/.test(s)
+              ? ["qbit", s.match(/qBittorrent|Transmission|Deluge|rTorrent/)[0]]
               : ["", "Step"];
 let deleting = [],
   delKind = "torrents";
@@ -1083,6 +1084,11 @@ const CLIENT_INFO = {
     user: true,
   },
   deluge: { url: "http://deluge:8112", help: "The Deluge web UI. Turn on its Label plugin so categories work.", user: false },
+  rtorrent: {
+    url: "http://rtorrent:8000/RPC2",
+    help: "rTorrent's XML-RPC address. Leave the username and password blank if it doesn't ask for them. rTorrent can't delete files itself, so Shredarr must see its download folder (use a path mapping if the paths differ).",
+    user: true,
+  },
 };
 const MEDIA_INFO = {
   jellyfin: { url: "http://jellyfin:8096", key: "API key", help: "Jellyfin → Dashboard → API Keys" },

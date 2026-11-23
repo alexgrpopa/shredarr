@@ -8,12 +8,16 @@ from ...config import JSON
 from .base import Torrent, TorrentClient
 from .deluge import DelugeClient
 from .qbittorrent import QBittorrentClient
+from .rtorrent import RTorrentClient
 from .transmission import TransmissionClient
 
-CLIENT_CLASSES: dict[str, type[QBittorrentClient] | type[TransmissionClient] | type[DelugeClient]] = {
+CLIENT_CLASSES: dict[
+    str, type[QBittorrentClient] | type[TransmissionClient] | type[DelugeClient] | type[RTorrentClient]
+] = {
     "qbittorrent": QBittorrentClient,
     "transmission": TransmissionClient,
     "deluge": DelugeClient,
+    "rtorrent": RTorrentClient,
 }
 
 

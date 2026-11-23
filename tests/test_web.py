@@ -210,6 +210,8 @@ def test_connection_tests(lab: Lab, start: StartFn, golden) -> None:
         ("transmission", "transmission", {"url": lab.transmission.url}),
         ("deluge", "deluge", {"url": lab.deluge.url, "password": "deluge"}),
         ("deluge-bad", "deluge", {"url": lab.deluge.url, "password": "no"}),
+        ("rtorrent", "rtorrent", {"url": lab.rtorrent.url + "/RPC2", "username": "rtorrent", "password": "rtorrent"}),
+        ("rtorrent-bad", "rtorrent", {"url": lab.rtorrent.url + "/RPC2", "username": "rtorrent", "password": "no"}),
         ("jellyfin", "jellyfin", {"url": lab.jellyfin.url}),
         ("jellyfin-bad", "jellyfin", {"url": lab.jellyfin.url, "api_key": "nope"}),
         ("plex", "plex", {"url": lab.plex.url, "api_key": lab.plex.token}),

@@ -31,7 +31,7 @@ src/shredarr/
   clients/         the apps Shredarr talks to; they raise ServiceError and nothing else
     servarr.py       Sonarr, Radarr, Prowlarr
     seerr.py, jellyfin.py, plex.py
-    torrents/        qBittorrent, Transmission, Deluge behind one TorrentClient interface
+    torrents/        qBittorrent, Transmission, Deluge, rTorrent behind one TorrentClient interface
   services/        what Shredarr does
     deletes.py       media deleted in Jellyfin (webhook) or Plex (noticed on disk) → Sonarr/Radarr/Seerr, queue torrents
     cleanup.py       the sweep: delete queued torrents once they're out of the library and their rule is met
@@ -64,7 +64,7 @@ Some conventions:
 - **Torrent clients sit behind `TorrentClient`** (`clients/torrents/base.py`), including `close()`: a client that's
   thrown away is closed.
 - **Library clients where they fit, thin clients where they don't.** qBittorrent, Transmission and Plex use their
-  maintained client libraries. Sonarr/Radarr/Prowlarr, Seerr, Jellyfin and Deluge use small httpx clients: the
+  maintained client libraries. Sonarr/Radarr/Prowlarr, Seerr, Jellyfin, Deluge and rTorrent use small httpx clients: the
   libraries for those either miss endpoints Shredarr needs (pyarr has no filtered or per-item history, `/parse` or
   bulk episode-file deletes), are built for something else (the Jellyfin client is for players), or pull in a second
   HTTP stack (deluge-web-client).
@@ -85,7 +85,7 @@ Some conventions:
 ## Tests
 
 `tests/` runs Shredarr as a real process against fake apps (`tests/fakes/`: Sonarr, Radarr, Prowlarr, qBittorrent,
-Transmission, Deluge, Jellyfin, Plex, Seerr, ntfy) that share a temporary disk with real files and hardlinks. The lab
+Transmission, Deluge, rTorrent, Jellyfin, Plex, Seerr, ntfy) that share a temporary disk with real files and hardlinks. The lab
 (`tests/fakes/lab.py`) sets things up the way the real apps would: library files hardlinked to downloads,
 Sonarr/Radarr history with download ids, season packs, upgrades, cross-seeds, RAR releases.
 

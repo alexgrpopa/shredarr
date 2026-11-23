@@ -378,6 +378,46 @@ def test_deluge(lab: Lab, start: StartFn, golden) -> None:
     assert not os.path.exists(m.torrent.disk_path)
 
 
+def test_rtorrent(lab: Lab, start: StartFn, golden) -> None:
+    m = lab.add_movie("Spring", 2019, ratio=9, seeding_days=99)
+    keep = lab.add_movie("Charge", 2022, ratio=1, seeding_days=2)
+    s = start(client="rtorrent")
+    golden("torrents", s.api("/api/torrents")["torrents"])
+    lab.delete_movie_files(m)
+    s.webhook(lab.movie_event(m))
+    s.wait_log("^deleted torrent")
+    assert m.torrent and m.torrent.hash not in lab.torrents and keep.torrent and keep.torrent.hash in lab.torrents
+    assert not os.path.exists(m.torrent.disk_path), "rTorrent can't delete files, so Shredarr did"
+    assert [x["saved_torrent"] for x in s.api("/api/history")["rows"]] == [False]  # no .torrent export over XML-RPC
+
+
+def test_rtorrent_season_pack_and_cross_seed(lab: Lab, start: StartFn) -> None:
+    show = lab.add_series("Paper Moons", seasons={1: 3})
+    pack = lab.add_release(show, 1, [1, 2, 3], ratio=3, seeding_days=30)
+    m = lab.add_movie("Big Buck Bunny", 2008, ratio=3, seeding_days=30)
+    assert m.torrent
+    cs = lab.add_cross_seed(m.torrent, same_path=True, ratio=0.1, seeding_days=1)
+    s = start(client="rtorrent", behavior={"cross_seed_with_original": True})
+    lab.delete_series_folder(show)
+    s.webhook(lab.series_event(show))
+    s.wait_log(f"^deleted torrent '{pack.name}'")
+    assert not os.path.exists(pack.disk_path) and m.torrent.hash in lab.torrents
+    lab.delete_movie_files(m)
+    s.webhook(lab.movie_event(m))
+    s.wait_log("cross-seed, together with the original")
+    assert not lab.torrents and not os.path.exists(m.torrent.disk_path) and cs.hash not in lab.torrents
+
+
+def test_rtorrent_data_it_cant_see_is_not_deleted(lab: Lab, start: StartFn) -> None:
+    m = lab.add_movie("Spring", 2019, ratio=9, seeding_days=99)
+    assert m.torrent
+    s = start(client="rtorrent", path_maps=[{"remote": lab.downloads, "local": "/nowhere"}])
+    lab.delete_movie_files(m)
+    s.webhook(lab.movie_event(m))
+    s.wait_status(m.torrent.hash, "^error: can't see rTorrent's files")
+    assert m.torrent.hash in lab.torrents and os.path.exists(m.torrent.disk_path)
+
+
 def test_qbittorrent_session_expiry_signs_in_again(lab: Lab, start: StartFn) -> None:
     m = lab.add_movie("Spring", 2019, ratio=9, seeding_days=99)
     s = start()

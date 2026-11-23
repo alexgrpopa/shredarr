@@ -4,6 +4,11 @@ Notable changes per release. Releases before 2.0.0 are in the [git history](http
 
 ## [Unreleased]
 
+### Added
+
+- rTorrent as a torrent client, through its XML-RPC address (optional username and password). Shredarr deletes a
+  removed torrent's files itself, as rTorrent can't, so it must see the download folder (path mappings work).
+
 ## [2.4.0] - 2026-11-16
 
 ### Added
