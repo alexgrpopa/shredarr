@@ -140,7 +140,9 @@ sends no notifications, whatever its settings say (a banner says so). Handy for 
 **Leftovers** are torrents Sonarr/Radarr imported from whose files are no longer in your library, usually because
 an upgrade replaced them. The dashboard lists them so you can add them to the cleanup list. With *Settings → Cleanup
 behavior → Clean up leftovers automatically*, Shredarr adds them by itself once they have been leftovers for an hour,
-and they go when their seeding rule is met. Protected torrents ("Never delete") are skipped. Because a disk going
+and they go when their seeding rule is met. If you deleted something while Dry run was on, such a torrent can be
+added this way after Dry run is switched off, and then only the torrent is removed: Sonarr/Radarr/Seerr are not
+updated, so turn Dry run off before deleting, or repeat the delete. Protected torrents ("Never delete") are skipped. Because a disk going
 offline makes every torrent look like a leftover, nothing is added while a library folder can't be read, while
 Sonarr/Radarr can't be reached, or while the Plex or Emby library watch sees files vanish at once. When more than 20
 torrents (and more than a fifth of them) turn into leftovers together, none are added and you get a notification

@@ -13,6 +13,16 @@ Notable changes per release. Releases before 2.0.0 are in the [git history](http
 - rTorrent as a torrent client, through its XML-RPC address (optional username and password). Shredarr deletes a
   removed torrent's files itself, as rTorrent can't, so it must see the download folder (path mappings work).
 
+### Fixed
+
+- A delete handled while Dry run is on no longer puts its torrents on the cleanup list. Before, switching Dry run off
+  let the sweep delete those torrents without Sonarr, Radarr or Seerr ever hearing about the delete (the episode stayed
+  monitored and could be downloaded again). Now the log says `[dry run] would have queued N torrent(s)` and nothing is
+  saved. Such a torrent already shows under Leftovers on the dashboard during Dry run. With **Clean up leftovers
+  automatically** switched on (off by default), it can still be queued automatically after Dry run is switched off and
+  the leftover wait has passed (1 hour by default), and then only the torrent is removed: Sonarr/Radarr/Seerr are not
+  updated. So turn Dry run off before deleting, or repeat the delete after switching it off.
+
 ## [2.4.0] - 2026-11-16
 
 ### Added
