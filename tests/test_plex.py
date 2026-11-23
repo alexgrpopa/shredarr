@@ -60,6 +60,59 @@ def test_episode_and_season_deleted_on_disk(lab: Lab, start: StartFn, golden) ->
     golden("log", [x for x in s.log() if not x.startswith("deleted torrent")])
 
 
+def writes(lab: Lab) -> list[tuple[str, str, str]]:
+    return [
+        (f.name, r.method, r.path) for f in (lab.sonarr, lab.radarr, lab.seerr) for r in f.calls if r.method != "GET"
+    ]
+
+
+@SERVERS
+def test_deletes_noticed_in_dry_run_change_nothing_and_work_once_live(lab: Lab, start: StartFn, media: str) -> None:
+    movie, other = (
+        lab.add_movie(t, y, ratio=9, seeding_days=99) for t, y in (("Big Buck Bunny", 2008), ("Sintel", 2010))
+    )
+    show, other_show = (
+        lab.add_series("Paper Moons", seasons={1: 3, 2: 2}),
+        lab.add_series("Spring Tide", seasons={1: 3, 2: 2}),
+    )
+    for x in (show, other_show):
+        lab.add_release(x, 1, range(1, 4), ratio=9, seeding_days=99)
+        lab.add_release(x, 2, [1, 2], ratio=9, seeding_days=99)
+    s = start(media=media, dry_run=True)
+    watching(s)
+    torrents = set(lab.torrents)
+    lab.delete_movie_files(movie)
+    s.wait_log(r"^  \[dry run\] would have removed 'Big Buck Bunny' from Seerr")
+    lab.delete_episode_files(show, 1, [2])
+    s.wait_log(r"^  \[dry run\] would have removed 1 episode file record\(s\) of 'Paper Moons' S01E02")
+    lab.delete_season_folder(show, 2)
+    s.wait_log(r"^  \[dry run\] would have removed 2 episode file record\(s\) of 'Paper Moons' S02")
+    log = s.log()
+    assert sum("[dry run] would have queued 1 torrent(s) for cleanup after seeding" in x for x in log) == 3, log
+    assert not any("newly queued" in x for x in log), log
+    s.sweep()
+    assert not s.pending() and not writes(lab) and set(lab.torrents) == torrents
+    assert not lab.qbittorrent.requests("POST", "/api/v2/torrents/delete")
+    # nothing was queued, so the torrents of what was deleted show up as leftovers the user can still clean up
+    rows = {t["hash"]: t for t in s.api("/api/torrents")["torrents"]}
+    assert movie.torrent and rows[movie.torrent.hash]["leftover"] is True
+
+    # live: the same kind of deletes now run the whole chain
+    s.post("/rules", data={"mode": "either", "min_seed_days": "14", "min_ratio": "2"})
+    lab.delete_movie_files(other)
+    s.wait_log(r"^deleted torrent 'Sintel")
+    lab.delete_episode_files(other_show, 1, [2])
+    wait_for(lambda: [p["source"] for p in s.pending().values()] == ["episode"], what="the season pack queued")
+    s.sweep()  # it stays until its other episodes are gone from the library too
+    assert s.pending()
+    lab.delete_season_folder(other_show, 2)
+    s.wait_log(r"^deleted torrent 'Spring.Tide.S02")
+    assert not any("dry run" in x for x in s.log()[len(log) :])
+    assert len(lab.radarr.requests("DELETE")) == 1 and len(lab.seerr.requests("DELETE")) == 1
+    assert len(lab.sonarr.requests("PUT")) >= 2 and len(lab.sonarr.requests("DELETE")) >= 2
+    assert other.torrent and other.torrent.hash not in lab.torrents
+
+
 @SERVERS
 def test_whole_show_deleted_on_disk(lab: Lab, start: StartFn, media: str) -> None:
     show = lab.add_series("Paper Moons", seasons={1: 2})

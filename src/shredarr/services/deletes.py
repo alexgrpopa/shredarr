@@ -85,6 +85,16 @@ class MediaDeletes:
         except Exception as e:  # one failed step shouldn't stop the others
             self.activity.error(f"  FAILED: {desc}: {e}")
 
+    def queue_torrents(self, c: Config, hashes: list[str], name: str, source: str, snap: JSON) -> None:
+        """Queue the deleted media's torrents for cleanup (in dry run, only say so: a dry run changes nothing, or a
+        later live sweep would delete the torrent without Sonarr/Radarr/Seerr ever hearing about it)."""
+        if c.dry_run:
+            return self.activity.info(
+                f"  [dry run] would have queued {len(hashes)} torrent(s) for cleanup after seeding"
+            )
+        self.queue.add(hashes, name, source, snap, secrets.token_hex(6))
+        return None
+
     # ------------------------------------------------------------------ Jellyfin webhook events
     def handle(self, ev: JSON) -> None:
         if ev.get("disk_deletes"):
@@ -132,7 +142,7 @@ class MediaDeletes:
     def movie_removed(self, c: Config, key: str, name: str, radarr: RadarrClient, m: JSON, seerr: bool = True) -> None:
         hashes = list(dict.fromkeys(h["downloadId"] for h in radarr.movie_history(m["id"]) if h.get("downloadId")))
         snap = {"kind": "movie", "app": key, "movie": movie_settings(m)}
-        self.queue.add(hashes, m["title"], "movie", snap, secrets.token_hex(6))
+        self.queue_torrents(c, hashes, m["title"], "movie", snap)
         excl = c.behavior["import_exclusion"]
         self.act(
             c,
@@ -173,7 +183,7 @@ class MediaDeletes:
                 [e["seasonNumber"], e["episodeNumber"]] for e in sonarr.episodes(s["id"]) if e["monitored"]
             ],
         }
-        self.queue.add(hashes, s["title"], "series", snap, secrets.token_hex(6))
+        self.queue_torrents(c, hashes, s["title"], "series", snap)
         excl = c.behavior["import_exclusion"]
         self.act(
             c,
@@ -284,7 +294,7 @@ class MediaDeletes:
             "remonitor": [e["id"] for e in eps if e["monitored"]],
             "seasons": [season] if season_was else [],
         }
-        self.queue.add(hashes, label, "season" if season is not None else "episode", snap, secrets.token_hex(6))
+        self.queue_torrents(c, hashes, label, "season" if season is not None else "episode", snap)
         bh = c.behavior
         if bh["unmonitor"]:
             self.act(c, f"unmonitored {label} in {name}", lambda: sonarr.set_monitored(ids, False))

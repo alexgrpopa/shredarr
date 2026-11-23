@@ -224,8 +224,11 @@ def test_dry_run_changes_nothing(lab: Lab, start: StartFn, golden) -> None:
     lab.delete_episode_files(show, 1, [1])
     s.webhook(lab.movie_event(m))
     s.webhook(lab.episode_event(show, 1, 1))
-    s.wait_log(r"\[dry run\] would have deleted torrent '.*S01E01")
+    s.wait_log(r"\[dry run\] would have removed 1 episode file record")
     assert not any(f.requests("DELETE") or f.requests("PUT") for f in lab.fakes)
+    assert not s.pending(), (
+        "a dry run queues nothing, or a live sweep would delete torrents Sonarr/Radarr never heard of"
+    )
     assert not lab.qbittorrent.requests("POST", "/api/v2/torrents/delete")
     assert len(lab.torrents) == 2
     golden("log", s.log())
