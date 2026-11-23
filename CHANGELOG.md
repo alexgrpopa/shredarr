@@ -6,6 +6,10 @@ Notable changes per release. Releases before 2.0.0 are in the [git history](http
 
 ### Added
 
+- Emby as a media server, next to Jellyfin and Plex. Like Plex, Emby can't tell other apps about deletes, so
+  Shredarr watches the library folders and handles a video file that stays gone as a delete. Connect it with the
+  address and an API key (Emby → Dashboard → Advanced → API Keys). Shredarr tells Emby about restored and deleted
+  files after Undo, Redownload and Delete now. (Untested against a real Emby so far.)
 - rTorrent as a torrent client, through its XML-RPC address (optional username and password). Shredarr deletes a
   removed torrent's files itself, as rTorrent can't, so it must see the download folder (path mappings work).
 

@@ -1,7 +1,7 @@
 """Media deleted in the media server: clean it up in Sonarr, Radarr and Seerr right away, and queue its torrents.
 
-Jellyfin reports deletes through its Webhook plugin. Plex can't, so with Plex the library watch (watcher.py) reports
-files that disappeared from disk instead (disk_deletes).
+Jellyfin reports deletes through its Webhook plugin. Plex and Emby can't, so with them the library watch (watcher.py)
+reports files that disappeared from disk instead (disk_deletes).
 """
 
 from __future__ import annotations
@@ -312,10 +312,10 @@ class MediaDeletes:
         self.act(c, f"removed '{title}' from Seerr", lambda: seerr.delete_media(info["id"]))
         return None
 
-    # ------------------------------------------------------------------ Plex: files that disappeared from disk
+    # ------------------------------------------------------------------ Plex, Emby: files that disappeared from disk
     def disk_deletes(self, paths: list[str]) -> None:
-        """Library files that were deleted outside Shredarr (in Plex): clean up the movies and episodes they were,
-        unless Sonarr/Radarr already has another file for them (an upgrade)."""
+        """Library files that were deleted outside Shredarr (in Plex or Emby): clean up the movies and episodes they
+        were, unless Sonarr/Radarr already has another file for them (an upgrade)."""
         c = self.config.load()
         media = c.media_name
         for inst, arr in self.connections.arrs():

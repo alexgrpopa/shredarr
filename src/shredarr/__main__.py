@@ -16,7 +16,7 @@ from .web.app import create_app
 def main(argv: list[str] | None = None) -> int:
     settings = Settings.from_env()
     parser = argparse.ArgumentParser(
-        prog="shredarr", description="Delete it in Jellyfin or Plex, and it's gone everywhere."
+        prog="shredarr", description="Delete it in Jellyfin, Plex or Emby, and it's gone everywhere."
     )
     sub = parser.add_subparsers(dest="command")
     serve = sub.add_parser("serve", help="run the web app and the cleanup (the default)")

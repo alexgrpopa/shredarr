@@ -17,7 +17,7 @@ from ctypes import wintypes
 from dataclasses import dataclass, field
 from typing import Any
 
-from .media import FakeJellyfin, FakeNtfy, FakePlex, FakeSeerr, dashed, item_id
+from .media import FakeEmby, FakeJellyfin, FakeNtfy, FakePlex, FakeSeerr, dashed, item_id
 from .servarr import FakeProwlarr, FakeRadarr, FakeSonarr
 from .torrents import FakeDeluge, FakeQBittorrent, FakeRTorrent, FakeTransmission, Torrent, remove_data
 
@@ -169,6 +169,7 @@ class Lab:
         self.rtorrent = FakeRTorrent(self)
         self.jellyfin = FakeJellyfin(self)
         self.plex = FakePlex(self)
+        self.emby = FakeEmby(self)
         self.seerr = FakeSeerr()
         self.ntfy = FakeNtfy()
         self.extra_arrs: list[tuple[str, FakeRadarr | FakeSonarr]] = []
@@ -182,6 +183,7 @@ class Lab:
             self.rtorrent,
             self.jellyfin,
             self.plex,
+            self.emby,
             self.seerr,
             self.ntfy,
         ]
@@ -258,6 +260,8 @@ class Lab:
             c["deluge"] = {"url": self.deluge.url, "password": self.deluge.password}
         if media == "jellyfin":
             c["jellyfin"] = {"url": self.jellyfin.url, "api_key": self.jellyfin.api_key}
+        elif media == "emby":
+            c["emby"] = {"url": self.emby.url, "api_key": self.emby.api_key}
         else:
             c["plex"] = {"url": self.plex.url, "api_key": self.plex.token}
         if seerr:

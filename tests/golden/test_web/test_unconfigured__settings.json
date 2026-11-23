@@ -16,6 +16,9 @@
     "deluge": {
       "has_secret": false
     },
+    "emby": {
+      "has_secret": false
+    },
     "extra_arrs": [],
     "jellyfin": {
       "has_secret": false

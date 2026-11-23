@@ -1,13 +1,18 @@
-"""With Plex, deletes are noticed on disk (Plex can't send them), and Plex is rescanned after Shredarr's own changes."""
+"""With Plex (and Emby, see test_emby.py), deletes are noticed on disk (they can't send them), and the server is
+rescanned after Shredarr's own changes. Tests without golden files run for both."""
 
 from __future__ import annotations
 
 import os
 import time
 
+import pytest
+
 from tests.conftest import StartFn
 from tests.fakes.lab import Lab
 from tests.harness import Shredarr, wait_for
+
+SERVERS = pytest.mark.parametrize("media", ["plex", "emby"])
 
 
 def watching(s: Shredarr) -> None:
@@ -26,11 +31,12 @@ def test_movie_deleted_on_disk(lab: Lab, start: StartFn, golden) -> None:
     golden("log", s.log())
 
 
-def test_upgrade_or_rename_is_not_a_delete(lab: Lab, start: StartFn) -> None:
+@SERVERS
+def test_upgrade_or_rename_is_not_a_delete(lab: Lab, start: StartFn, media: str) -> None:
     m = lab.add_movie("Big Buck Bunny", 2008)
     show = lab.add_series("Paper Moons", seasons={1: 2})
     lab.add_release(show, 1, [1, 2])
-    s = start(media="plex")
+    s = start(media=media)
     watching(s)
     os.rename(m.file, m.file.replace("Bluray-1080p", "Remux-1080p"))  # renamed: same inode
     lab.add_release(show, 1, [1], release="Paper.Moons.S01E01.2160p-UPGRADE")  # replaced by a new file
@@ -54,20 +60,22 @@ def test_episode_and_season_deleted_on_disk(lab: Lab, start: StartFn, golden) ->
     golden("log", [x for x in s.log() if not x.startswith("deleted torrent")])
 
 
-def test_whole_show_deleted_on_disk(lab: Lab, start: StartFn) -> None:
+@SERVERS
+def test_whole_show_deleted_on_disk(lab: Lab, start: StartFn, media: str) -> None:
     show = lab.add_series("Paper Moons", seasons={1: 2})
     lab.add_release(show, 1, [1, 2])
-    s = start(media="plex")
+    s = start(media=media)
     watching(s)
     lab.delete_series_folder(show)
-    s.wait_log("^Plex deleted Series: Paper Moons")
+    s.wait_log(f"^{media.title()} deleted Series: Paper Moons")
     s.wait_log("removed 'Paper Moons' from Sonarr")
 
 
-def test_disk_going_offline_is_not_a_delete(lab: Lab, start: StartFn) -> None:
+@SERVERS
+def test_disk_going_offline_is_not_a_delete(lab: Lab, start: StartFn, media: str) -> None:
     for i in range(25):
         lab.add_movie(f"Movie {i:02d}", 2000 + i, torrent=False)
-    s = start(media="plex")
+    s = start(media=media)
     watching(s)
     for m in list(lab.movie_refs.values())[:24]:
         lab.delete_movie_files(m)
@@ -80,12 +88,13 @@ def test_disk_going_offline_is_not_a_delete(lab: Lab, start: StartFn) -> None:
     wait_for(lambda: "Shredarr hit a problem" in lab.ntfy.titles(), what="a notification, in case it was a real delete")
 
 
-def test_no_leftovers_queued_while_the_library_watch_sees_a_disk_offline(lab: Lab, start: StartFn) -> None:
+@SERVERS
+def test_no_leftovers_queued_while_the_library_watch_sees_a_disk_offline(lab: Lab, start: StartFn, media: str) -> None:
     for i in range(25):
         lab.add_movie(f"Movie {i:02d}", 2000 + i, torrent=False)
     m = lab.add_movie("Spring", 2019)
     assert m.torrent
-    s = start(media="plex", behavior={"auto_queue_leftovers": True}, env={"SHREDARR_LEFTOVER_WAIT": "0"})
+    s = start(media=media, behavior={"auto_queue_leftovers": True}, env={"SHREDARR_LEFTOVER_WAIT": "0"})
     watching(s)
     s.sweep()  # the sweep at startup is done before the disk goes away
     for x in lab.movie_refs.values():

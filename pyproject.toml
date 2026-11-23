@@ -1,7 +1,7 @@
 [project]
 name = "shredarr"
 version = "2.4.0"
-description = "Delete it in Jellyfin or Plex, and it's gone everywhere: Sonarr, Radarr, Seerr and your torrent client."
+description = "Delete it in Jellyfin, Plex or Emby, and it's gone everywhere: Sonarr, Radarr, Seerr and your torrent client."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

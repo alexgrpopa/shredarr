@@ -25,7 +25,8 @@ MODES = {
     "never": "never delete (protected)",
 }
 CLIENTS = {"qbittorrent": "qBittorrent", "transmission": "Transmission", "deluge": "Deluge", "rtorrent": "rTorrent"}
-MEDIA_SERVERS = {"jellyfin": "Jellyfin", "plex": "Plex"}
+MEDIA_SERVERS = {"jellyfin": "Jellyfin", "plex": "Plex", "emby": "Emby"}
+DISK_WATCHED = ("plex", "emby")  # media servers that can't report deletes: Shredarr watches the library folders
 SERVICES = {
     "sonarr": "Sonarr",
     "radarr": "Radarr",
@@ -142,7 +143,7 @@ class Config:
 
     @property
     def media_kind(self) -> str:
-        """Which media server is used: jellyfin or plex."""
+        """Which media server is used: jellyfin, plex or emby."""
         k = self.raw.get("media_server")
         return k if k in MEDIA_SERVERS else "jellyfin"
 

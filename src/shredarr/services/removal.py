@@ -72,7 +72,7 @@ class MediaRemoval:
     ) -> list[Step]:
         """Steps that remove media everywhere: the library files at paths from Jellyfin (which deletes them), movies
         from Radarr (and Seerr), and episodes in Sonarr (unmonitored, files removed; the series itself stays so new
-        episodes keep coming). With Plex, Sonarr/Radarr delete the files and Plex rescans.
+        episodes keep coming). With Plex or Emby, Sonarr/Radarr delete the files and the server rescans.
         movies = [(instance key, movie)], series = [(instance key, series, [episodes])]."""
         paths = set(paths)
         steps: list[Step | None] = []
@@ -126,11 +126,11 @@ class MediaRemoval:
                 )
             files = sorted({e["episodeFileId"] for e in mine if e.get("episodeFileId")})
             if files:
-                plex = not server.deletes_files
+                arr_deletes = not server.deletes_files
                 steps.append(
                     Step(
-                        f"{'Delete' if plex else 'Remove'} {label} files "
-                        f"{'with' if plex else 'from'} {c.arr_name(key)}",
+                        f"{'Delete' if arr_deletes else 'Remove'} {label} files "
+                        f"{'with' if arr_deletes else 'from'} {c.arr_name(key)}",
                         partial(sonarr.delete_episode_files, files),
                     )
                 )

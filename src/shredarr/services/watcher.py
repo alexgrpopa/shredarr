@@ -1,5 +1,6 @@
-"""Plex can't tell other apps about deletes, so with Plex Shredarr watches the library folders instead. A video file
-that disappears and stays gone (it wasn't renamed, or replaced by an upgrade) is handled like a delete in Jellyfin."""
+"""Plex and Emby can't tell other apps about deletes, so with them Shredarr watches the library folders instead. A
+video file that disappears and stays gone (it wasn't renamed, or replaced by an upgrade) is handled like a delete in
+Jellyfin."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Fake Jellyfin, Plex, Seerr and a notification endpoint (ntfy)."""
+"""Fake Jellyfin, Plex, Emby, Seerr and a notification endpoint (ntfy)."""
 
 from __future__ import annotations
 
@@ -251,6 +251,47 @@ class FakePlex(FakeServer):
         for r in self.requests("GET", r"/library/sections/\d+/refresh"):
             out.append((r.path.split("/")[3], r.query.get("path")))
         return out
+
+
+class FakeEmby(FakeServer):
+    """Emby 4.x: an API key in X-Emby-Token, optionally under /emby. Nothing is reported to other apps."""
+
+    name = "emby"
+    api_key = "emby-key"
+
+    def __init__(self, lab: Lab) -> None:
+        super().__init__()
+        self.lab = lab
+        for prefix in ("", "/emby"):
+            self.route("GET", prefix + "/System/Info", self.auth(lambda r: {"Version": "4.9.1.0", "ServerName": "Lab"}))
+            self.route(
+                "GET",
+                prefix + "/Library/VirtualFolders",
+                self.auth(
+                    lambda r: [
+                        {"Name": "Movies", "CollectionType": "movies", "Locations": [self.lab.movies]},
+                        {"Name": "Shows", "CollectionType": "tvshows", "Locations": [self.lab.tv]},
+                    ]
+                ),
+            )
+            self.route("POST", prefix + "/Library/Media/Updated", self.auth(lambda r: None))
+            self.route("POST", prefix + "/Library/Refresh", self.auth(lambda r: None))
+
+    def auth(self, fn: Any) -> Any:
+        def wrapped(r: Request) -> Any:
+            if r.headers.get("x-emby-token") != self.api_key:
+                return Response(401, "Unauthorized")
+            return fn(r)
+
+        return wrapped
+
+    def updates(self) -> list[tuple[str, str]]:
+        """(update type, path) of every file or folder Shredarr told Emby about."""
+        return [
+            (u["UpdateType"], u["Path"])
+            for r in self.requests("POST", "/Library/Media/Updated")
+            for u in r.json()["Updates"]
+        ]
 
 
 class FakeSeerr(FakeServer):

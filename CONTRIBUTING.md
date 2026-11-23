@@ -30,10 +30,10 @@ src/shredarr/
   app.py           everything wired together, plus the background workers
   clients/         the apps Shredarr talks to; they raise ServiceError and nothing else
     servarr.py       Sonarr, Radarr, Prowlarr
-    seerr.py, jellyfin.py, plex.py
+    seerr.py, jellyfin.py, plex.py, emby.py
     torrents/        qBittorrent, Transmission, Deluge, rTorrent behind one TorrentClient interface
   services/        what Shredarr does
-    deletes.py       media deleted in Jellyfin (webhook) or Plex (noticed on disk) → Sonarr/Radarr/Seerr, queue torrents
+    deletes.py       media deleted in Jellyfin (webhook) or Plex/Emby (noticed on disk) → Sonarr/Radarr/Seerr, queue torrents
     cleanup.py       the sweep: delete queued torrents once they're out of the library and their rule is met
     library.py       which torrent each library file came from (inodes, Sonarr/Radarr import history), cross-seeds
     rules.py         seeding rules, and how a rule is described
@@ -41,9 +41,9 @@ src/shredarr/
     delete_now.py, orphans.py, removal.py   Delete now and the No torrent tab
     restore.py       putting media back in Sonarr/Radarr; undo.py: Undo; redownload.py: History → Redownload
     suppressions.py  deletes Shredarr made itself, so the media server's report of them is ignored
-    watcher.py       the Plex library watch
+    watcher.py       the Plex/Emby library watch
     leftovers.py     leftovers (the dashboard's list), and queueing them by itself when that's switched on
-    media_server.py  rescans, for Jellyfin and Plex behind one interface
+    media_server.py  rescans, for Jellyfin, Plex and Emby behind one interface
     auth.py, notifications.py, health.py, dashboard.py, settings_editor.py, webhook_setup.py, ...
   web/             FastAPI: sign-in middleware, routes, pages
   static/          the web UI (plain HTML/CSS/JS, no build step)
@@ -64,7 +64,7 @@ Some conventions:
 - **Torrent clients sit behind `TorrentClient`** (`clients/torrents/base.py`), including `close()`: a client that's
   thrown away is closed.
 - **Library clients where they fit, thin clients where they don't.** qBittorrent, Transmission and Plex use their
-  maintained client libraries. Sonarr/Radarr/Prowlarr, Seerr, Jellyfin, Deluge and rTorrent use small httpx clients:
+  maintained client libraries. Sonarr/Radarr/Prowlarr, Seerr, Jellyfin, Emby, Deluge and rTorrent use small httpx clients:
   the libraries for those either miss endpoints Shredarr needs (pyarr has no filtered or per-item history, `/parse`
   or bulk episode-file deletes), are built for something else (the Jellyfin client is for players), or pull in a
   second HTTP stack (deluge-web-client).
@@ -85,7 +85,7 @@ Some conventions:
 ## Tests
 
 `tests/` runs Shredarr as a real process against fake apps (`tests/fakes/`: Sonarr, Radarr, Prowlarr, qBittorrent,
-Transmission, Deluge, rTorrent, Jellyfin, Plex, Seerr, ntfy) that share a temporary disk with real files and
+Transmission, Deluge, rTorrent, Jellyfin, Plex, Emby, Seerr, ntfy) that share a temporary disk with real files and
 hardlinks. The lab (`tests/fakes/lab.py`) sets things up the way the real apps would: library files hardlinked to
 downloads, Sonarr/Radarr history with download ids, season packs, upgrades, cross-seeds, RAR releases.
 

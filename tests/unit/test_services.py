@@ -8,6 +8,7 @@ import os
 import sqlite3
 import time
 from collections.abc import Iterator
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -19,14 +20,16 @@ from shredarr.clients.base import ServiceError, ServiceHTTPError, ServiceUnreach
 from shredarr.config import NOTIFY_DEFAULTS
 from shredarr.db import MIGRATIONS
 from shredarr.services import health as health_mod
-from shredarr.services import notifications
+from shredarr.services import media_server, notifications
 from shredarr.services.cleanup import SweepContext
 from shredarr.services.connections import TorrentService
 from shredarr.services.health import Updates
 from shredarr.services.settings_editor import SettingsEditor
 from shredarr.settings import Settings
 from shredarr.web.deps import client_ip
+from tests.fakes.media import FakeEmby
 from tests.fakes.server import FakeServer, Response
+from tests.harness import wait_for
 
 
 @pytest.fixture
@@ -351,3 +354,23 @@ def test_health_waits_before_reporting_a_failure(monkeypatch: pytest.MonkeyPatch
     clock[0] += 300
     h.check()
     assert events == ["FAILED", "restored"]
+
+
+def test_emby_created_notice_is_sent_twice_with_each_folder_once(
+    monkeypatch: pytest.MonkeyPatch, core: Shredarr
+) -> None:
+    monkeypatch.setattr(media_server, "JELLYFIN_RETRY", 0.05)
+    emby = FakeEmby(SimpleNamespace(movies="/media/movies", tv="/media/tv"))  # type: ignore[arg-type]
+    emby.start()
+    try:
+        core.config.update(lambda raw: raw.update(media_server="emby", emby={"url": emby.url, "api_key": emby.api_key}))
+        media_server.media_server(core.connections).rescan(["/data/tv/Show/S1/a.mkv", "/data/tv/Show/S1/b.mkv"])
+        wait_for(lambda: len(emby.updates()) == 6, what="both notices")
+        once = [
+            ("Created", "/media/tv/Show/S1"),
+            ("Created", "/media/tv/Show/S1/a.mkv"),
+            ("Created", "/media/tv/Show/S1/b.mkv"),
+        ]
+        assert emby.updates() == once * 2
+    finally:
+        emby.stop()

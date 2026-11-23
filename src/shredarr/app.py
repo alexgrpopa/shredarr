@@ -11,7 +11,7 @@ from typing import Any
 
 from . import __version__
 from .clients.base import read_only, set_read_only
-from .config import JSON, ConfigStore
+from .config import DISK_WATCHED, JSON, ConfigStore
 from .db import Database
 from .repositories import ActivityRepo, HistoryRepo, OverridesRepo, PendingRepo, RedownloadsRepo, SessionsRepo
 from .services.activity import Activity
@@ -261,7 +261,7 @@ class Shredarr:
         while True:
             try:
                 c = self.config.load()
-                if c.media_kind == "plex" and not c.missing:
+                if c.media_kind in DISK_WATCHED and not c.missing:
                     self.watcher.look()
             except Exception:
                 log.exception("library watch")

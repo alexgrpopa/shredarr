@@ -15,7 +15,7 @@ class Settings:
     host: str = "0.0.0.0"
     port: int = 8089
     repo: str = "jimbos-slop-shop/shredarr"  # where update checks look for new releases
-    watch_interval: float = 60  # Plex library watch: seconds between looks at the library folders
+    watch_interval: float = 60  # library watch (Plex, Emby): seconds between looks at the library folders
     watch_confirm: float = 100  # seconds a file must stay gone: an upgrade or rename replaces it within seconds
     # seconds a connection must stay down before it is reported: with checks every 5 minutes that means two
     # failed checks in a row, so a ~30 s container restart (a VPN reconnect, an app update) isn't an alert
@@ -55,5 +55,5 @@ class Settings:
 
     @property
     def watch_file(self) -> str:
-        """The Plex library watch's last look at the library, so deletes while Shredarr was stopped are noticed too."""
+        """The library watch's last look at the library, so deletes while Shredarr was stopped are noticed too."""
         return os.path.join(self.config_dir, "library-files.json")
