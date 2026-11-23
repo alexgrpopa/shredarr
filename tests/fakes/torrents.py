@@ -326,7 +326,8 @@ class FakeDeluge(TorrentFake):
 
 
 class FakeRTorrent(TorrentFake):
-    """rTorrent's XML-RPC, behind basic auth. Like the real one, d.erase leaves the data on disk."""
+    """rTorrent's XML-RPC, behind basic auth. Like the real one, d.erase leaves the data on disk, answers for exactly
+    the keys asked, in the order asked, and faults on a hash it doesn't have (upper case only, as it reports them)."""
 
     name = "rtorrent"
     username, password = "rtorrent", "rtorrent"
@@ -334,48 +335,84 @@ class FakeRTorrent(TorrentFake):
     def __init__(self, lab: Lab) -> None:
         super().__init__(lab)
         self.route("POST", "/RPC2", self.rpc)
+        self.layouts: dict[str, tuple[bool, list[tuple[str, int]]]] = {}  # known from the .torrent, not the disk
+        self.closed: set[str] = set()  # stopped: d.base_path is empty
+        self.hashing: set[str] = set()
+        self.vanished: set[str] = set()  # still listed, but gone by the time they're asked for
 
-    def row(self, t: Torrent) -> list[Any]:
-        done = t.progress >= 1
-        return [
-            t.hash.upper(),
-            t.name,
-            t.content_path,
-            t.size,
-            int(t.size * t.progress),
-            int(t.ratio * 1000),
-            t.added_on,
-            int(time.time()) - t.seeding_time if done else 0,
-            1,
-            1,
-            int(done),
-            t.upspeed,
-            t.dlspeed,
-            urllib.parse.quote(t.category),
-            [[t.tracker]],
-        ]
+    def layout(self, t: Torrent) -> tuple[bool, list[tuple[str, int]]]:
+        if t.hash not in self.layouts:
+            p = t.disk_path
+            if os.path.isdir(p):
+                files = [os.path.join(d, f) for d, _, fs in os.walk(p) for f in fs]
+                self.layouts[t.hash] = (True, [(os.path.relpath(f, p), os.path.getsize(f)) for f in files])
+            else:
+                self.layouts[t.hash] = (False, [(os.path.basename(p), t.size)])
+        return self.layouts[t.hash]
+
+    def values(self, t: Torrent) -> dict[str, Any]:
+        done, closed, (multi, files) = t.progress >= 1, t.hash in self.closed, self.layout(t)
+        size = sum(n for _, n in files)  # as in the .torrent, even when the files are gone
+        return {
+            "d.hash=": t.hash.upper(),
+            "d.name=": t.name if multi else files[0][0],
+            "d.base_path=": "" if closed else t.content_path,
+            "d.directory=": t.content_path if multi else t.save_path,
+            "d.is_multi_file=": int(multi),
+            "d.hashing=": int(t.hash in self.hashing),
+            "d.size_bytes=": size,
+            "d.completed_bytes=": int(size * t.progress),
+            "d.ratio=": int(t.ratio * 1000),
+            "d.timestamp.started=": t.added_on,
+            "d.timestamp.finished=": int(time.time()) - t.seeding_time if done else 0,
+            "d.state=": 0 if closed else 1,
+            "d.is_active=": 0 if closed else 1,
+            "d.complete=": int(done),
+            "d.up.rate=": t.upspeed,
+            "d.down.rate=": t.dlspeed,
+            "d.custom1=": urllib.parse.quote(t.category),
+            "t.multicall=,t.url=": [[t.tracker]],
+        }
+
+    def torrent(self, h: str) -> Torrent:
+        t = self.lab.torrents.get(h.lower())
+        if not t or h != h.upper() or t.hash in self.vanished:
+            raise xmlrpc.client.Fault(-501, "Could not find info-hash.")
+        return t
 
     def rpc(self, r: Request) -> Response:
         want = "Basic " + base64.b64encode(f"{self.username}:{self.password}".encode()).decode()
         if r.headers.get("authorization") != want:
             return Response(401, "Unauthorized")
         params, method = xmlrpc.client.loads(r.body)
+        try:
+            out = self.answer(method, params)
+        except xmlrpc.client.Fault as f:
+            return Response(200, xmlrpc.client.dumps(f), {"Content-Type": "text/xml"})
+        return Response(200, xmlrpc.client.dumps((out,), methodresponse=True), {"Content-Type": "text/xml"})
+
+    def answer(self, method: str, params: Any) -> Any:
+        def ask(vals: dict[str, Any], keys: Any) -> list[Any]:
+            if missing := [k for k in keys if k not in vals]:
+                raise xmlrpc.client.Fault(-506, f"Method '{missing[0]}' not defined")
+            return [vals[k] for k in keys]
+
         if method == "system.client_version":
-            out: Any = "0.9.8"
-        elif method == "d.multicall2":
-            out = [self.row(t) for t in self.lab.torrents.values()]
-        elif method == "d.base_path":
-            t = self.lab.torrents.get(params[0].lower())
-            out = t.content_path if t else ""
-        elif method == "d.erase":
-            self.remove([params[0].lower()], False)
-            out = 0
-        elif method == "load.raw_start":
+            return "0.9.8"
+        if method == "d.multicall2":
+            return [ask(self.values(t), params[2:]) for t in self.lab.torrents.values()]
+        if method == "f.multicall":
+            files = self.layout(self.torrent(params[0]))[1]
+            return [ask({"f.path=": f, "f.size_bytes=": n}, params[2:]) for f, n in files]
+        if method == "d.erase":
+            self.remove([self.torrent(params[0]).hash], False)
+            return 0
+        if method in ("d.directory", "d.name", "d.is_multi_file", "d.base_path"):
+            return self.values(self.torrent(params[0]))[method + "="]
+        if method == "load.raw_start":
             cat = next(
                 (urllib.parse.unquote(p.split("=", 1)[1]) for p in params[2:] if p.startswith("d.custom1.set=")), ""
             )
             self.readd(params[1].data, cat)
-            out = 0
-        else:
-            return Response(200, xmlrpc.client.dumps(xmlrpc.client.Fault(-506, f"Method '{method}' not defined")))
-        return Response(200, xmlrpc.client.dumps((out,), methodresponse=True), {"Content-Type": "text/xml"})
+            return 0
+        raise xmlrpc.client.Fault(-506, f"Method '{method}' not defined")

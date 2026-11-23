@@ -72,9 +72,9 @@ The screenshots use made-up demo data; see [Try the demo](#try-the-demo).
 - A media server: **Jellyfin** with the **Webhook** plugin (Dashboard → Plugins → Catalog → *Webhook*), or **Plex**.
   Jellyfin 12 works without turning on its legacy authorization.
 - **Sonarr** and/or **Radarr**. More instances (say a 4K Radarr) can be added.
-- A torrent client: **qBittorrent**, **Transmission**, **Deluge** or **rTorrent** (Deluge needs its **Label** plugin turned on
-  for categories; rTorrent is reached at its XML-RPC address, such as `http://rtorrent:8000/RPC2`, with optional basic
-  auth, and uses the label for categories).
+- A torrent client: **qBittorrent**, **Transmission**, **Deluge** or **rTorrent** (Deluge needs its **Label** plugin
+  turned on for categories; rTorrent is reached at its XML-RPC address, such as `http://rtorrent:8000/RPC2`, with
+  optional basic auth, and uses the label for categories).
 - **Seerr** and **Prowlarr** are optional.
 - Shredarr must be able to see your **downloads and library** folders. The simplest setup is the common
   "one `/data` folder" layout (downloads and media on the same disk, imported with hardlinks), mounted into
@@ -155,7 +155,8 @@ for them (qBittorrent also gets *same release*).
 
 **rTorrent** can't delete a torrent's files itself, so Shredarr deletes them from the disk it sees (a **path mapping**
 if the paths differ) and then removes the torrent. If it can't see the files, the torrent is left alone and the cleanup
-list shows why.
+list shows why. rTorrent has no seeding-time counter, so seeding time is measured since the torrent finished (time
+spent stopped counts); for private-tracker minimum-seed rules prefer a ratio rule.
 
 ## Settings at a glance
 

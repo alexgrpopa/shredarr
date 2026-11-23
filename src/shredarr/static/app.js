@@ -1086,7 +1086,7 @@ const CLIENT_INFO = {
   deluge: { url: "http://deluge:8112", help: "The Deluge web UI. Turn on its Label plugin so categories work.", user: false },
   rtorrent: {
     url: "http://rtorrent:8000/RPC2",
-    help: "rTorrent's XML-RPC address. Leave the username and password blank if it doesn't ask for them. rTorrent can't delete files itself, so Shredarr must see its download folder (use a path mapping if the paths differ).",
+    help: "rTorrent's XML-RPC address. Leave the username and password blank if it doesn't ask for them. rTorrent can't delete files itself, so Shredarr must see its download folder (use a path mapping if the paths differ). rTorrent has no seeding-time counter, so seeding time is measured since the torrent finished (time spent stopped counts): for private-tracker minimum-seed rules prefer a ratio rule.",
     user: true,
   },
 };
