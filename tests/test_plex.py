@@ -109,8 +109,29 @@ def test_deletes_noticed_in_dry_run_change_nothing_and_work_once_live(lab: Lab, 
     s.wait_log(r"^deleted torrent 'Spring.Tide.S02")
     assert not any("dry run" in x for x in s.log()[len(log) :])
     assert len(lab.radarr.requests("DELETE")) == 1 and len(lab.seerr.requests("DELETE")) == 1
-    assert len(lab.sonarr.requests("PUT")) >= 2 and len(lab.sonarr.requests("DELETE")) >= 2
+    assert [(r.method, r.path) for r in lab.sonarr.calls if r.method != "GET"] == [
+        ("PUT", "/api/v3/episode/monitor"),
+        ("DELETE", "/api/v3/episodefile/bulk"),
+        ("PUT", "/api/v3/episode/monitor"),
+        ("PUT", "/api/v3/series/2"),
+        ("DELETE", "/api/v3/episodefile/bulk"),
+    ]
     assert other.torrent and other.torrent.hash not in lab.torrents
+
+
+def test_dry_run_delete_of_an_already_queued_torrent_reports_no_new_one(lab: Lab, start: StartFn) -> None:
+    show = lab.add_series("Paper Moons", seasons={1: 3})
+    lab.add_release(show, 1, range(1, 4), ratio=1, seeding_days=1)
+    s = start(media="plex")
+    watching(s)
+    lab.delete_episode_files(show, 1, [1])
+    wait_for(lambda: len(s.pending()) == 1, what="the season pack queued")
+    s.post("/rules", data={"mode": "either", "min_seed_days": "14", "min_ratio": "2", "dry_run": "on"})
+    mark = len(s.log())
+    lab.delete_episode_files(show, 1, [2])
+    s.wait_log(r"^  \[dry run\] would have removed 1 episode file record\(s\) of 'Paper Moons' S01E02", after=mark)
+    assert not any("would have queued" in x for x in s.log()[mark:])
+    assert len(s.pending()) == 1
 
 
 @SERVERS

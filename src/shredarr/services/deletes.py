@@ -89,9 +89,10 @@ class MediaDeletes:
         """Queue the deleted media's torrents for cleanup (in dry run, only say so: a dry run changes nothing, or a
         later live sweep would delete the torrent without Sonarr/Radarr/Seerr ever hearing about it)."""
         if c.dry_run:
-            return self.activity.info(
-                f"  [dry run] would have queued {len(hashes)} torrent(s) for cleanup after seeding"
-            )
+            new = sum(self.queue.pending.get(h) is None for h in {x.lower() for x in hashes})  # as queue.add counts
+            if new:
+                self.activity.info(f"  [dry run] would have queued {new} torrent(s) for cleanup after seeding")
+            return None
         self.queue.add(hashes, name, source, snap, secrets.token_hex(6))
         return None
 
