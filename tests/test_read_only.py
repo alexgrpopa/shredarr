@@ -76,6 +76,17 @@ def test_a_read_only_copy_changes_nothing(lab: Lab, start: StartFn) -> None:
     assert lab.radarr.movies and not lab.radarr.exclusions
 
 
+def test_rtorrent_is_not_changed(lab: Lab, start: StartFn) -> None:
+    m = lab.add_movie("Raygun", 2024, ratio=9, seeding_days=99)
+    assert m.torrent
+    s = start(client="rtorrent", env={"SHREDARR_READ_ONLY": "1"})
+    lab.delete_movie_files(m)
+    s.webhook(lab.movie_event(m))
+    s.wait_status(m.torrent.hash, "^error: read-only test copy, so nothing was changed in rTorrent$")
+    assert not [r for r in lab.rtorrent.calls if b"d.erase" in r.body or b"load.raw" in r.body]
+    assert os.path.exists(m.torrent.disk_path)
+
+
 def test_plex_scans_are_not_sent(lab: Lab, start: StartFn) -> None:
     m = lab.add_movie("Big Buck Bunny", 2008)
     s = start(media="plex", env={"SHREDARR_READ_ONLY": "1"})

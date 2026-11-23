@@ -32,6 +32,7 @@ body:
         - qBittorrent
         - Transmission
         - Deluge
+        - rTorrent
     validations:
       required: true
   - type: input

@@ -43,6 +43,14 @@
     "msg": "HTTP 401: check the API key",
     "ok": false
   },
+  "rtorrent": {
+    "msg": "rTorrent 0.9.8",
+    "ok": true
+  },
+  "rtorrent-bad": {
+    "msg": "wrong username or password",
+    "ok": false
+  },
   "seerr": {
     "msg": "Seerr 2.7.3",
     "ok": true

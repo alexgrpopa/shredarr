@@ -24,7 +24,7 @@ MODES = {
     "ratio": "ratio only",
     "never": "never delete (protected)",
 }
-CLIENTS = {"qbittorrent": "qBittorrent", "transmission": "Transmission", "deluge": "Deluge"}
+CLIENTS = {"qbittorrent": "qBittorrent", "transmission": "Transmission", "deluge": "Deluge", "rtorrent": "rTorrent"}
 MEDIA_SERVERS = {"jellyfin": "Jellyfin", "plex": "Plex"}
 SERVICES = {
     "sonarr": "Sonarr",
@@ -136,7 +136,7 @@ class Config:
     # ------------------------------------------------------------------ connections
     @property
     def client_kind(self) -> str:
-        """Which torrent client is used: qbittorrent, transmission or deluge."""
+        """Which torrent client is used: qbittorrent, transmission, deluge or rtorrent."""
         k = self.raw.get("torrent_client")
         return k if k in CLIENTS else "qbittorrent"
 

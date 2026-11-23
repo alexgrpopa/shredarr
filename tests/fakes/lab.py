@@ -19,7 +19,7 @@ from typing import Any
 
 from .media import FakeJellyfin, FakeNtfy, FakePlex, FakeSeerr, dashed, item_id
 from .servarr import FakeProwlarr, FakeRadarr, FakeSonarr
-from .torrents import FakeDeluge, FakeQBittorrent, FakeTransmission, Torrent, remove_data
+from .torrents import FakeDeluge, FakeQBittorrent, FakeRTorrent, FakeTransmission, Torrent, remove_data
 
 DAY = 86400
 TRACKER = "https://tracker.example.org/a1b2c3d4e5/announce"  # the path is a private passkey: it must never be shown
@@ -166,6 +166,7 @@ class Lab:
         self.qbittorrent = FakeQBittorrent(self)
         self.transmission = FakeTransmission(self)
         self.deluge = FakeDeluge(self)
+        self.rtorrent = FakeRTorrent(self)
         self.jellyfin = FakeJellyfin(self)
         self.plex = FakePlex(self)
         self.seerr = FakeSeerr()
@@ -178,6 +179,7 @@ class Lab:
             self.qbittorrent,
             self.transmission,
             self.deluge,
+            self.rtorrent,
             self.jellyfin,
             self.plex,
             self.seerr,
@@ -246,6 +248,12 @@ class Lab:
             }
         elif client == "transmission":
             c["transmission"] = {"url": self.transmission.url, "username": "", "password": ""}
+        elif client == "rtorrent":
+            c["rtorrent"] = {
+                "url": self.rtorrent.url + "/RPC2",
+                "username": self.rtorrent.username,
+                "password": self.rtorrent.password,
+            }
         else:
             c["deluge"] = {"url": self.deluge.url, "password": self.deluge.password}
         if media == "jellyfin":
