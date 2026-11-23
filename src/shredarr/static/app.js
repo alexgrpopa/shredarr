@@ -349,6 +349,7 @@ const NAMES = {
   rtorrent: "rTorrent",
   jellyfin: "Jellyfin",
   plex: "Plex",
+  emby: "Emby",
   prowlarr: "Prowlarr",
 };
 
@@ -576,15 +577,17 @@ const sysOf = (s) =>
     ? ["jellyfin", "Jellyfin"]
     : /Plex/.test(s)
       ? ["plex", "Plex"]
-      : /Sonarr/.test(s)
-        ? ["sonarr", "Sonarr"]
-        : /Radarr/.test(s)
-          ? ["radarr", "Radarr"]
-          : /Seerr/.test(s)
-            ? ["seerr", "Seerr"]
-            : /qBittorrent|Transmission|Deluge|rTorrent/.test(s)
-              ? ["qbit", s.match(/qBittorrent|Transmission|Deluge|rTorrent/)[0]]
-              : ["", "Step"];
+      : /Emby/.test(s)
+        ? ["emby", "Emby"]
+        : /Sonarr/.test(s)
+          ? ["sonarr", "Sonarr"]
+          : /Radarr/.test(s)
+            ? ["radarr", "Radarr"]
+            : /Seerr/.test(s)
+              ? ["seerr", "Seerr"]
+              : /qBittorrent|Transmission|Deluge|rTorrent/.test(s)
+                ? ["qbit", s.match(/qBittorrent|Transmission|Deluge|rTorrent/)[0]]
+                : ["", "Step"];
 let deleting = [],
   delKind = "torrents";
 function stepList(steps, notes) {
@@ -872,7 +875,7 @@ function lineClass(m) {
 function evIcon(head, cls) {
   if (cls === "bad") return "alert";
   if (cls === "dry") return "clock";
-  if (/^(Jellyfin deleted|Plex deleted|Delete now)/.test(head)) return "trash";
+  if (/^(Jellyfin deleted|Plex deleted|Emby deleted|Delete now)/.test(head)) return "trash";
   if (/^deleted torrent|^Low disk/.test(head)) return "check";
   if (/started/.test(head)) return "power";
   if (/rule/i.test(head)) return "sliders";
@@ -1097,6 +1100,7 @@ const MEDIA_INFO = {
     key: "Token",
     help: "Your X-Plex-Token. In Plex, open any movie → ⋯ → Get Info → View XML; the token is at the end of the address that opens.",
   },
+  emby: { url: "http://emby:8096", key: "API key", help: "Emby → Dashboard → Advanced → API Keys" },
 };
 // which app a connection box is about: its select (torrent client / media server), its instance key, or its service name
 function boxService(box) {
@@ -1124,15 +1128,22 @@ function showConn(box, conf) {
 function kindHelp() {
   const ci = CLIENT_INFO[$("f-client").value],
     mi = MEDIA_INFO[$("f-media").value],
-    plex = $("f-media").value === "plex";
+    kind = $("f-media").value,
+    watched = kind !== "jellyfin";
   document.querySelector('input[name="client.url"]').placeholder = ci.url;
   $("client-help").textContent = ci.help;
   $("client-user").hidden = !ci.user;
   document.querySelector('input[name="media.url"]').placeholder = mi.url;
   $("media-key-label").textContent = mi.key;
   $("media-help").textContent = mi.help;
-  $("jfhook").hidden = plex;
-  $("plexnote").hidden = !plex;
+  $("jfhook").hidden = watched;
+  $("plexnote").hidden = !watched;
+  $("plexnote-h").textContent = `${NAMES[kind]} deletes`;
+  $("plexnote-name").textContent = NAMES[kind];
+  $("plexnote-how").textContent =
+    kind === "plex"
+      ? "To delete from Plex, turn on Allow media deletion in Plex → Settings → Library."
+      : "To delete from Emby, the user who deletes needs permission to delete media from disk.";
 }
 function extraBox(x) {
   const div = document.createElement("div");

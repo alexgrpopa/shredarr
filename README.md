@@ -1,9 +1,9 @@
 <p align="center"><img src="src/shredarr/static/logo.png" width="140" alt="Shredarr logo"></p>
 
 <h1 align="center">Shredarr</h1>
-<p align="center"><b>Delete it in Jellyfin or Plex, and it's gone everywhere.</b></p>
+<p align="center"><b>Delete it in Jellyfin, Plex or Emby, and it's gone everywhere.</b></p>
 
-When you delete a movie, show, season or episode in **Jellyfin** or **Plex**, Shredarr cleans it up everywhere
+When you delete a movie, show, season or episode in **Jellyfin**, **Plex** or **Emby**, Shredarr cleans it up everywhere
 else: **Sonarr / Radarr** (including extra instances, such as a 4K one), **Seerr** (Jellyseerr/Overseerr) and your
 torrent client (**qBittorrent**, **Transmission**, **Deluge** or **rTorrent**). It keeps the torrent seeding until
 your seeding rule is met, then removes the torrent and its download, with an **Undo** in the meantime and a
@@ -69,7 +69,7 @@ The screenshots use made-up demo data; see [Try the demo](#try-the-demo).
 
 ## Requirements
 
-- A media server: **Jellyfin** with the **Webhook** plugin (Dashboard → Plugins → Catalog → *Webhook*), or **Plex**.
+- A media server: **Jellyfin** with the **Webhook** plugin (Dashboard → Plugins → Catalog → *Webhook*), **Plex** or **Emby**.
   Jellyfin 12 works without turning on its legacy authorization.
 - **Sonarr** and/or **Radarr**. More instances (say a 4K Radarr) can be added.
 - A torrent client: **qBittorrent**, **Transmission**, **Deluge** or **rTorrent** (Deluge needs its **Label** plugin
@@ -104,10 +104,12 @@ Then:
    media server and enter theirs (and Seerr's or Prowlarr's if you use them). Use **Test** on each one, then
    **Save connections**. Once saved, **Test** uses the saved key if you leave it blank, but only at the saved
    address: after changing an address, type the key again to test it. For a Plex token, open any movie in Plex →
-   ⋯ → *Get Info* → *View XML*; the token is at the end of the address that opens.
+   ⋯ → *Get Info* → *View XML*; the token is at the end of the address that opens. For Emby, make an API key in
+   Dashboard → Advanced → API Keys.
 3. **Jellyfin:** under **Jellyfin webhook**, enter the address Jellyfin can reach Shredarr at (for example
-   `http://192.168.1.10:8089`) and click **Set up Jellyfin webhook**. **Plex:** nothing to set up (see below), but
-   turn on *Allow media deletion* in Plex → Settings → Library so you can delete from Plex.
+   `http://192.168.1.10:8089`) and click **Set up Jellyfin webhook**. **Plex and Emby:** nothing to set up (see
+   below). To delete from Plex, turn on *Allow media deletion* in Plex → Settings → Library; in Emby the user who
+   deletes needs permission to delete media from disk.
 4. Pick your **default seeding rule** on the dashboard. Leave **Dry run** on until you've seen it do the right
    thing in the Activity tab.
 
@@ -121,9 +123,9 @@ sends no notifications, whatever its settings say (a banner says so). Handy for 
 
 ## How it works
 
-1. **You delete something in Jellyfin or Plex.** Jellyfin's Webhook plugin tells Shredarr (Jellyfin batches these,
-   so it can take up to about 90 seconds). Plex can't tell other apps about deletes, so with Plex Shredarr watches
-   your library folders: a movie or episode file that disappears and stays gone for a couple of minutes counts as
+1. **You delete something in Jellyfin, Plex or Emby.** Jellyfin's Webhook plugin tells Shredarr (Jellyfin batches these,
+   so it can take up to about 90 seconds). Plex and Emby can't tell other apps about deletes, so with them Shredarr
+   watches your library folders: a movie or episode file that disappears and stays gone for a couple of minutes counts as
    deleted. Renames, upgrades by Sonarr/Radarr and a disk going offline are recognized and ignored. When a lot of
    files vanish at once (more than 20, and more than a fifth of the library), that looks like a disk going offline,
    so Shredarr does nothing but sends a notification. If it was a real delete, the torrents show under
@@ -140,7 +142,7 @@ an upgrade replaced them. The dashboard lists them so you can add them to the cl
 behavior → Clean up leftovers automatically*, Shredarr adds them by itself once they have been leftovers for an hour,
 and they go when their seeding rule is met. Protected torrents ("Never delete") are skipped. Because a disk going
 offline makes every torrent look like a leftover, nothing is added while a library folder can't be read, while
-Sonarr/Radarr can't be reached, or while the Plex library watch sees files vanish at once. When more than 20
+Sonarr/Radarr can't be reached, or while the Plex or Emby library watch sees files vanish at once. When more than 20
 torrents (and more than a fifth of them) turn into leftovers together, none are added and you get a notification
 instead.
 

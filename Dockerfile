@@ -12,7 +12,7 @@ RUN uv sync --locked --no-dev --no-editable
 # Run: the virtual environment, plus unar so Undo can unpack RAR releases (Settings → RAR restore).
 FROM python:3.15-slim
 LABEL org.opencontainers.image.source="https://github.com/jimbos-slop-shop/shredarr" \
-      org.opencontainers.image.description="Delete it in Jellyfin or Plex, and it's gone everywhere." \
+      org.opencontainers.image.description="Delete it in Jellyfin, Plex or Emby, and it's gone everywhere." \
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends unar && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/.venv /app/.venv

@@ -17,7 +17,7 @@ def changes(lab: Lab) -> list[tuple[str, str, str]]:
     """Every request that would have changed something in an app."""
     out = [
         (f.name, r.method, r.path)
-        for f in (lab.sonarr, lab.radarr, lab.seerr, lab.jellyfin, lab.prowlarr)
+        for f in (lab.sonarr, lab.radarr, lab.seerr, lab.jellyfin, lab.emby, lab.prowlarr)
         for r in f.calls
         if r.method != "GET"
     ]
@@ -94,4 +94,14 @@ def test_plex_scans_are_not_sent(lab: Lab, start: StartFn) -> None:
     s.post("/api/delete-now", {"hash": m.torrent.hash})
     s.wait_log("^  done: Rescan Plex")  # rescans are best effort: a refused one is only a warning in the container log
     assert "nothing was changed in Plex" in wait_for(s.output, what="the warning")
+    assert changes(lab) == []
+
+
+def test_emby_updates_are_not_sent(lab: Lab, start: StartFn) -> None:
+    m = lab.add_movie("Big Buck Bunny", 2008)
+    s = start(media="emby", env={"SHREDARR_READ_ONLY": "1"})
+    assert m.torrent
+    s.post("/api/delete-now", {"hash": m.torrent.hash})
+    s.wait_log("^  done: Rescan Emby")
+    assert "nothing was changed in Emby" in wait_for(s.output, what="the warning")
     assert changes(lab) == []

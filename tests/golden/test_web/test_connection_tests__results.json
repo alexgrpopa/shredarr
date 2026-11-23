@@ -7,6 +7,18 @@
     "msg": "wrong password",
     "ok": false
   },
+  "emby": {
+    "msg": "Emby 4.9.1.0 \u00b7 Lab",
+    "ok": true
+  },
+  "emby-bad": {
+    "msg": "HTTP 401: check the API key",
+    "ok": false
+  },
+  "emby-prefix": {
+    "msg": "Emby 4.9.1.0 \u00b7 Lab",
+    "ok": true
+  },
   "empty": {
     "msg": "no address set",
     "ok": false

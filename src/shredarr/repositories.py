@@ -300,7 +300,8 @@ class ActivityRepo:
         """(deletes reported by the media server, problems) since ts."""
         with self.db.connect() as con:
             deletes = con.execute(
-                "select count(*) from log where ts > ? and (msg like 'Jellyfin deleted%' or msg like 'Plex deleted%')",
+                "select count(*) from log where ts > ? and (msg like 'Jellyfin deleted%' or msg like 'Plex deleted%' "
+                "or msg like 'Emby deleted%')",
                 (ts,),
             ).fetchone()[0]
             # lines from before problems were marked are recognized by their wording, as they used to be

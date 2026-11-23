@@ -1,4 +1,5 @@
-"""Telling the media server about files Shredarr brought back or removed. Jellyfin and Plex behind one interface."""
+"""Telling the media server about files Shredarr brought back or removed. Jellyfin, Plex and Emby behind one
+interface."""
 
 from __future__ import annotations
 
@@ -25,7 +26,10 @@ def map_onto(p: str, location: str) -> str | None:
 
 class MediaServer(Protocol):
     name: str
-    deletes_files: bool  # True if deleting an item in it deletes its files (Jellyfin); else Sonarr/Radarr do (Plex)
+    # True if Shredarr deletes through the media server's own API, which removes the files (Jellyfin). False: Sonarr/
+    # Radarr delete the files and the server is rescanned (Plex, Emby). Emby deletes files too when someone deletes an
+    # item in it, but it can't report that, so the library watch notices (like Plex).
+    deletes_files: bool
 
     def rescan(self, paths: list[str] | set[str], deleted: bool = False) -> None:
         """Tell it about restored (or deleted) library files."""
@@ -112,6 +116,41 @@ class Plex:
         self.connections.plex().scan_all()
 
 
+class Emby:
+    name = "Emby"
+    deletes_files = False
+
+    def __init__(self, connections: Connections) -> None:
+        self.connections = connections
+
+    def rescan(self, paths: list[str] | set[str], deleted: bool = False) -> None:
+        """Tells Emby which files appeared or are gone (and, for new ones, their folder)."""
+        emby = self.connections.emby()
+        try:
+            locations = emby.library_locations()
+        except ServiceError as e:
+            return log.warning("emby rescan: %s", e)
+        updates: list[JSON] = []
+        for p in paths:
+            for loc in locations:
+                mapped = map_onto(p, loc)
+                if mapped:
+                    if not deleted:
+                        updates.append({"Path": os.path.dirname(mapped), "UpdateType": "Created"})
+                    updates.append({"Path": mapped, "UpdateType": "Deleted" if deleted else "Created"})
+                    break
+        if updates:
+            try:
+                emby.media_updated(updates)
+            except ServiceError as e:
+                log.warning("emby rescan: %s", e)
+        return None
+
+    def refresh_all(self) -> None:
+        self.connections.emby().refresh_library()
+
+
 def media_server(connections: Connections) -> MediaServer:
     """The media server set up in Settings."""
-    return Plex(connections) if connections.config.load().media_kind == "plex" else Jellyfin(connections)
+    kind = connections.config.load().media_kind
+    return (Plex if kind == "plex" else Emby if kind == "emby" else Jellyfin)(connections)

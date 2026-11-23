@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 from ..clients.base import NotConfigured, ServiceError, ServiceHTTPError, SignInFailed, refuse_if_read_only
+from ..clients.emby import EmbyClient
 from ..clients.jellyfin import JellyfinClient
 from ..clients.plex import PlexClient
 from ..clients.seerr import SeerrClient
@@ -101,6 +102,10 @@ class Connections:
     def jellyfin(self) -> JellyfinClient:
         conf = self.config.load().service("jellyfin")
         return self._client(JellyfinClient, conf["url"].rstrip("/"), conf.get("api_key", ""))
+
+    def emby(self) -> EmbyClient:
+        conf = self.config.load().service("emby")
+        return self._client(EmbyClient, conf["url"].rstrip("/"), conf.get("api_key", ""))
 
     def plex(self) -> PlexClient:
         conf = self.config.load().service("plex")
@@ -203,8 +208,8 @@ def describe_service(svc: str, conf: JSON) -> str:
     if svc == "seerr":
         with SeerrClient(api_url(svc, url), key) as seerr:
             return "Seerr " + seerr.version()
-    if svc == "jellyfin":
-        with JellyfinClient(url, key) as jellyfin:
-            r = jellyfin.system_info()
-        return f"Jellyfin {r.get('Version', '')} · {r.get('ServerName', '')}"
+    if svc in ("jellyfin", "emby"):
+        with (JellyfinClient if svc == "jellyfin" else EmbyClient)(url, key) as server:
+            r = server.system_info()
+        return f"{SERVICES[svc]} {r.get('Version', '')} · {r.get('ServerName', '')}"
     raise ServiceError("unknown service")
