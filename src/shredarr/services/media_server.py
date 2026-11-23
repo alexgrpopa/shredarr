@@ -9,11 +9,13 @@ import threading
 from typing import Protocol
 
 from ..clients.base import ServiceError
-from ..config import JSON
+from ..clients.emby import EmbyClient
+from ..clients.jellyfin import JellyfinClient
 from .connections import Connections
 
 log = logging.getLogger(__name__)
-JELLYFIN_RETRY = 90  # seconds: Jellyfin can ignore the first notice when the file's folder is brand new
+# seconds: Jellyfin (and Emby, same code lineage) can ignore the first notice when the file's folder is brand new
+JELLYFIN_RETRY = 90
 
 
 def map_onto(p: str, location: str) -> str | None:
@@ -44,42 +46,44 @@ class Jellyfin:
     def __init__(self, connections: Connections) -> None:
         self.connections = connections
 
+    def client(self) -> JellyfinClient:
+        return self.connections.jellyfin()
+
     def rescan(self, paths: list[str] | set[str], deleted: bool = False) -> None:
         """Only restored files: Jellyfin notices deletes itself. Sent twice (see JELLYFIN_RETRY)."""
         if deleted:
             return
         paths = list(paths)
-        self.notify_created(paths)
-        timer = threading.Timer(JELLYFIN_RETRY, self.notify_created, args=(paths,))
+        self.notify(paths)
+        timer = threading.Timer(JELLYFIN_RETRY, self.notify, args=(paths,))
         timer.daemon = True
         timer.start()
 
-    def notify_created(self, paths: list[str]) -> None:
-        """For setups where Sonarr/Radarr don't tell Jellyfin about imports themselves."""
-        jellyfin = self.connections.jellyfin()
+    def notify(self, paths: list[str], update_type: str = "Created") -> None:
+        """For setups where Sonarr/Radarr don't tell the server about imports themselves."""
+        client, log_name = self.client(), self.name.lower()
         try:
-            locations = jellyfin.library_locations()
+            locations = client.library_locations()
         except ServiceError as e:
-            return log.warning("jellyfin rescan: %s", e)
-        updates: list[JSON] = []
+            return log.warning("%s rescan: %s", log_name, e)
+        entries: dict[str, str] = {}  # a dict: the folder of every episode of a season is told once
         for p in paths:
             for loc in locations:
                 jp = map_onto(p, loc)
                 if jp:
-                    updates += [
-                        {"Path": os.path.dirname(jp), "UpdateType": "Created"},
-                        {"Path": jp, "UpdateType": "Created"},
-                    ]
+                    if update_type == "Created":
+                        entries[os.path.dirname(jp)] = update_type
+                    entries[jp] = update_type
                     break
-        if updates:
+        if entries:
             try:
-                jellyfin.media_updated(updates)
+                client.media_updated([{"Path": k, "UpdateType": v} for k, v in entries.items()])
             except ServiceError as e:
-                log.warning("jellyfin rescan: %s", e)
+                log.warning("%s rescan: %s", log_name, e)
         return None
 
     def refresh_all(self) -> None:
-        self.connections.jellyfin().refresh_library()
+        self.client().refresh_library()
 
 
 class Plex:
@@ -116,41 +120,24 @@ class Plex:
         self.connections.plex().scan_all()
 
 
-class Emby:
+class Emby(Jellyfin):
+    """Emby takes the same updates as Jellyfin, but it can't report deletes, so it is also told about those."""
+
     name = "Emby"
     deletes_files = False
 
-    def __init__(self, connections: Connections) -> None:
-        self.connections = connections
+    def client(self) -> EmbyClient:
+        return self.connections.emby()
 
     def rescan(self, paths: list[str] | set[str], deleted: bool = False) -> None:
-        """Tells Emby which files appeared or are gone (and, for new ones, their folder)."""
-        emby = self.connections.emby()
-        try:
-            locations = emby.library_locations()
-        except ServiceError as e:
-            return log.warning("emby rescan: %s", e)
-        updates: list[JSON] = []
-        for p in paths:
-            for loc in locations:
-                mapped = map_onto(p, loc)
-                if mapped:
-                    if not deleted:
-                        updates.append({"Path": os.path.dirname(mapped), "UpdateType": "Created"})
-                    updates.append({"Path": mapped, "UpdateType": "Deleted" if deleted else "Created"})
-                    break
-        if updates:
-            try:
-                emby.media_updated(updates)
-            except ServiceError as e:
-                log.warning("emby rescan: %s", e)
-        return None
-
-    def refresh_all(self) -> None:
-        self.connections.emby().refresh_library()
+        if deleted:
+            self.notify(list(paths), "Deleted")
+        else:
+            super().rescan(paths)
 
 
 def media_server(connections: Connections) -> MediaServer:
     """The media server set up in Settings."""
     kind = connections.config.load().media_kind
-    return (Plex if kind == "plex" else Emby if kind == "emby" else Jellyfin)(connections)
+    servers: dict[str, type[Plex | Jellyfin]] = {"plex": Plex, "emby": Emby}
+    return servers.get(kind, Jellyfin)(connections)

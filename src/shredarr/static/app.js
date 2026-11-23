@@ -572,22 +572,13 @@ $("dlg").addEventListener("close", async () => {
 });
 
 // ------------------------------------------------------------------ delete now (one or many)
-const sysOf = (s) =>
-  /Jellyfin/.test(s)
-    ? ["jellyfin", "Jellyfin"]
-    : /Plex/.test(s)
-      ? ["plex", "Plex"]
-      : /Emby/.test(s)
-        ? ["emby", "Emby"]
-        : /Sonarr/.test(s)
-          ? ["sonarr", "Sonarr"]
-          : /Radarr/.test(s)
-            ? ["radarr", "Radarr"]
-            : /Seerr/.test(s)
-              ? ["seerr", "Seerr"]
-              : /qBittorrent|Transmission|Deluge|rTorrent/.test(s)
-                ? ["qbit", s.match(/qBittorrent|Transmission|Deluge|rTorrent/)[0]]
-                : ["", "Step"];
+const SYSTEMS = ["Jellyfin", "Plex", "Emby", "Sonarr", "Radarr", "Seerr"];
+const sysOf = (s) => {
+  const app = SYSTEMS.find((n) => s.includes(n));
+  if (app) return [app.toLowerCase(), app];
+  const torrent = s.match(/qBittorrent|Transmission|Deluge|rTorrent/);
+  return torrent ? ["qbit", torrent[0]] : ["", "Step"];
+};
 let deleting = [],
   delKind = "torrents";
 function stepList(steps, notes) {
@@ -1140,10 +1131,8 @@ function kindHelp() {
   $("plexnote").hidden = !watched;
   $("plexnote-h").textContent = `${NAMES[kind]} deletes`;
   $("plexnote-name").textContent = NAMES[kind];
-  $("plexnote-how").textContent =
-    kind === "plex"
-      ? "To delete from Plex, turn on Allow media deletion in Plex → Settings → Library."
-      : "To delete from Emby, the user who deletes needs permission to delete media from disk.";
+  $("plexnote-how").hidden = kind !== "plex";
+  $("plexnote-emby").hidden = kind !== "emby";
 }
 function extraBox(x) {
   const div = document.createElement("div");
